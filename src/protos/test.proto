@@ -1,0 +1,27 @@
+// 文件头部注释，描述文件的用途和结构。
+
+syntax = "proto2";  // 指定使用的语法版本。
+
+package example;  // 定义包名。
+
+
+// 验证类型
+enum vertifyType {
+  MESSAGE = 1; //  消息验证
+  FACE = 2; // 人脸验证
+}
+
+
+message Protocol {
+  required string name = 1;     // 协议名字
+  required string version = 2;  // 协议版本
+  required Data data = 3;    // 协议数据
+  optional vertifyType vertify_type = 4; // 验证类型
+}
+
+
+message Data {
+  required string spid = 1; // 商户号
+  required string purchaser_id = 2; // 购买id
+  required uint32 is_pass = 3; // 是否通过
+}

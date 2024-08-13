@@ -1,0 +1,86 @@
+{
+  "name": "main/resources/test.proto",
+  "package": "example",
+  "messageType": [
+    {
+      "name": "Protocol",
+      "field": [
+        {
+          "name": "name",
+          "number": 1,
+          "label": "LABEL_REQUIRED",
+          "type": "TYPE_STRING",
+          "jsonName": "name"
+        },
+        {
+          "name": "version",
+          "number": 2,
+          "label": "LABEL_REQUIRED",
+          "type": "TYPE_STRING",
+          "jsonName": "version"
+        },
+        {
+          "name": "data",
+          "number": 3,
+          "label": "LABEL_REQUIRED",
+          "type": "TYPE_MESSAGE",
+          "typeName": ".example.Data",
+          "jsonName": "data"
+        },
+        {
+          "name": "vertify_type",
+          "number": 4,
+          "label": "LABEL_OPTIONAL",
+          "type": "TYPE_ENUM",
+          "typeName": ".example.vertifyType",
+          "jsonName": "vertifyType"
+        }
+      ]
+    },
+    {
+      "name": "Data",
+      "field": [
+        {
+          "name": "spid",
+          "number": 1,
+          "label": "LABEL_REQUIRED",
+          "type": "TYPE_STRING",
+          "jsonName": "spid"
+        },
+        {
+          "name": "purchaser_id",
+          "number": 2,
+          "label": "LABEL_REQUIRED",
+          "type": "TYPE_STRING",
+          "jsonName": "purchaserId"
+        },
+        {
+          "name": "is_pass",
+          "number": 3,
+          "label": "LABEL_REQUIRED",
+          "type": "TYPE_UINT32",
+          "jsonName": "isPass"
+        }
+      ]
+    }
+  ],
+  "enumType": [
+    {
+      "name": "vertifyType",
+      "value": [
+        {
+          "name": "INVALID",
+          "number": 0
+        },
+        {
+          "name": "MESSAGE",
+          "number": 1
+        },
+        {
+          "name": "FACE",
+          "number": 2
+        }
+      ]
+    }
+  ]
+}
