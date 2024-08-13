@@ -1,41 +1,121 @@
 package org.example;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
+import com.google.gson.reflect.TypeToken;
+import org.example.parse.Field;
+import org.example.parse.FieldType;
 
+import java.lang.reflect.Type;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 public class ValidateMsg {
-    List<String> extra;  // 多出来的
-    List<String> missing; // 缺失的
-    List<String> illega_enum; // 枚举值不合法
-    List<String> required; // 空值
-    List<String> not_composite; // 不是组合类型
+    Set<String> extra;  // 多出来的
+    Set<String> missing; // 缺失的
+    Set<String> illega_enum; // 枚举值不合法
+    Set<String> required; // 空值
+    Set<String> not_composite; // 不是组合类型
 
 
-    public String getField(JsonElement protocol, String name){
+    // 获取Protocol的字段数组
+    public static List<Field> getFields(JsonElement protocol) {
+        Type type = new TypeToken<List<Field>>() {
+        }.getType();
+        JsonArray jsonArray = protocol.getAsJsonObject().get("field").getAsJsonArray();
+        return new Gson().fromJson(jsonArray, type);
+    }
 
+    // 获取枚举的合法值（效率低）
+    public static Set<Integer> getLegalEnumValueByName(JsonElement meta_json_ele, String name){
+        Set<Integer> legal_values = new HashSet<>();
+        meta_json_ele.getAsJsonObject().get("enumType").getAsJsonArray().forEach(enum_ele -> {
+            if(enum_ele.getAsJsonObject().get("name").getAsString().equals(name)){
+                enum_ele.getAsJsonObject().get("value").getAsJsonArray().forEach(value_ele -> {
+                    legal_values.add(value_ele.getAsJsonObject().get("number").getAsInt());
+                });
+            }
+        });
+        return legal_values;
+    }
+
+    public static String getSuffix(String name){
+        int lastDotIndex = name.lastIndexOf('.');
+        if (lastDotIndex == -1) {
+            return ""; // No extension found
+        }
+        return name.substring(lastDotIndex + 1);
     }
 
 
-    public ValidateMsg validate(String meta, String data) throws Exception {
-        Gson data_json = new Gson();
+    public static ValidateMsg validate(String meta, String data) throws Exception {
         JsonElement data_json_ele = JsonParser.parseString(data);
 
-        Gson meta_gson = new Gson();
         JsonElement meta_json_ele = JsonParser.parseString(meta);
         JsonElement protocol = meta_json_ele.getAsJsonObject()
                 .get("messageType")
                 .getAsJsonArray().get(0);
 
-        if(protocol.getAsJsonObject().get("name").getAsString().equals("Protocol")){
+        if (!protocol.getAsJsonObject().get("name").getAsString().equals("Protocol")) {
             throw new Exception("not a protocol");
         }
 
+        // data中的所有key
+        Set<String> data_keys = new TreeSet<>();
         data_json_ele.getAsJsonObject().entrySet().forEach(entry -> {
-            System.out.println(entry.getKey() + ": " + entry.getValue());
+            data_keys.add(entry.getKey());
         });
+
+        List<Field> fields = getFields(protocol);
+        // protocol中的所有key
+        Set<String> protocol_keys = new TreeSet<>();
+        fields.forEach(field -> {
+            protocol_keys.add(field.getName());
+        });
+
+        ValidateMsg msg = new ValidateMsg();
+        // 多余的
+        msg.extra = data_keys.stream().filter(key -> !protocol_keys.contains(key)).collect(Collectors.toSet());
+
+        // 缺失的
+        msg.missing = protocol_keys.stream().filter(key -> !data_keys.contains(key)).collect(Collectors.toSet());
+
+        // 枚举值不合法
+        // 过滤所有枚举字段
+        msg.illega_enum = fields.stream().filter(field -> {
+            if(field.getType().equals(FieldType.ENUM)){
+                // 获取枚举的合法类型
+                Set<Integer> legal_values = getLegalEnumValueByName(meta_json_ele, getSuffix(field.getTypeName()));
+                return !legal_values.contains(Integer.parseInt(data_json_ele.getAsJsonObject().get(field.getName()).getAsString()));
+            }
+            return false;
+        }).map(Field::getName).collect(Collectors.toSet());
+
+        // 空值
+        msg.required = fields.stream().filter(field -> {
+            if(field.getLabel().equals("LABEL_REQUIRED")) {
+                if(!data_json_ele.getAsJsonObject().get(field.getName()).isJsonNull()){
+                    return data_json_ele.getAsJsonObject().get(field.getName()).getAsString().isEmpty();
+                }
+            }
+            return false;
+        }).map(Field::getName).collect(Collectors.toSet());
+
+        // 不是组合类型
+        msg.not_composite = fields.stream().filter(field -> {
+            if(field.getType().equals(FieldType.MESSAGE)){
+
+                return !data_json_ele.getAsJsonObject().get(field.getName()).isJsonObject();
+            }
+            return false;
+        }).map(Field::getName).collect(Collectors.toSet());
+
+        return msg;
 
     }
 }
