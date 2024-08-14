@@ -88,9 +88,8 @@ public class ValidateMsg {
         // 1.2 缺失的
         msg.missing = protocol_keys.stream().filter(key -> !data_keys.contains(key)).collect(Collectors.toSet());
 
-        // 比较两边都存在的键
-
-
+        // 获取两边都存在的键
+        Set<String> both_keys = data_keys.stream().filter(key -> !protocol_keys.contains(key)).collect(Collectors.toSet());
 
         // 2.枚举值不合法
         // 过滤所有枚举字段
