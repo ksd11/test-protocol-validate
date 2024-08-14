@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import org.example.parse.Field;
 import org.example.parse.FieldType;
+import org.example.util.JsonHelper;
 
 import java.lang.reflect.Type;
 import java.util.HashSet;
@@ -55,13 +56,14 @@ public class ValidateMsg {
 
     public static ValidateMsg validate(String meta, String data) throws Exception {
         JsonElement data_json_ele = JsonParser.parseString(data);
-
         JsonElement meta_json_ele = JsonParser.parseString(meta);
+
+        // 获取json
         JsonElement protocol = meta_json_ele.getAsJsonObject()
                 .get("messageType")
                 .getAsJsonArray().get(0);
 
-        if (!protocol.getAsJsonObject().get("name").getAsString().equals("Protocol")) {
+        if (!JsonHelper.readStringFromObject(protocol, "name").equals("Protocol")) {
             throw new Exception("not a protocol");
         }
 
@@ -78,44 +80,56 @@ public class ValidateMsg {
             protocol_keys.add(field.getName());
         });
 
+        // 保存校验结果
         ValidateMsg msg = new ValidateMsg();
-        // 多余的
+        // 1.1 多余的
         msg.extra = data_keys.stream().filter(key -> !protocol_keys.contains(key)).collect(Collectors.toSet());
 
-        // 缺失的
+        // 1.2 缺失的
         msg.missing = protocol_keys.stream().filter(key -> !data_keys.contains(key)).collect(Collectors.toSet());
 
-        // 枚举值不合法
+        // 比较两边都存在的键
+
+
+
+        // 2.枚举值不合法
         // 过滤所有枚举字段
         msg.illega_enum = fields.stream().filter(field -> {
             if(field.getType().equals(FieldType.ENUM)){
                 // 获取枚举的合法类型
                 Set<Integer> legal_values = getLegalEnumValueByName(meta_json_ele, getSuffix(field.getTypeName()));
-                return !legal_values.contains(Integer.parseInt(data_json_ele.getAsJsonObject().get(field.getName()).getAsString()));
+                return !legal_values.contains(Integer.parseInt(JsonHelper.readStringFromObject(data_json_ele, field.getName())));
             }
             return false;
         }).map(Field::getName).collect(Collectors.toSet());
 
-        // 空值
+        // 3. 空值
         msg.required = fields.stream().filter(field -> {
             if(field.getLabel().equals("LABEL_REQUIRED")) {
-                if(!data_json_ele.getAsJsonObject().get(field.getName()).isJsonNull()){
-                    return data_json_ele.getAsJsonObject().get(field.getName()).getAsString().isEmpty();
+                if(!JsonHelper.isNull(data_json_ele, field.getName())){
+                    return JsonHelper.readStringFromObject(data_json_ele, field.getName()).isEmpty();
                 }
             }
             return false;
         }).map(Field::getName).collect(Collectors.toSet());
 
-        // 不是组合类型
+        // 4.不是组合类型
         msg.not_composite = fields.stream().filter(field -> {
             if(field.getType().equals(FieldType.MESSAGE)){
-
-                return !data_json_ele.getAsJsonObject().get(field.getName()).isJsonObject();
+                return JsonHelper.isJsonObject(data_json_ele, field.getName());
             }
             return false;
         }).map(Field::getName).collect(Collectors.toSet());
 
         return msg;
+    }
 
+    @Override
+    public String toString(){
+        return "extra: " + extra + "\n" +
+                "missing: " + missing + "\n" +
+                "illega_enum: " + illega_enum + "\n" +
+                "required: " + required + "\n" +
+                "not_composite: " + not_composite + "\n";
     }
 }

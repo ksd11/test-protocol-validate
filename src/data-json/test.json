@@ -1,10 +1,11 @@
 {
-  "name": "example",
   "version": "1.0",
   "data": {
     "spid": "123456",
     "purchaser_id": "654321",
     "is_pass": "1"
   },
-    "vertify_type": "1"
+  "vertify_type": "3",
+  "extra_field1": "hello",
+  "extra_field2": "world"
 }
